@@ -4,6 +4,10 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const passport = require('passport');
+const { loginUser, restoreUser } = require('../../config/passport');
+const { isProduction } = require('../../config/keys');
+const validateRegisterInput = require('../../validations/register');
+const validateLoginInput = require('../../validations/login');
 
 /* GET users listing. */
 router.get('/', function(req, res, next) {
@@ -13,7 +17,7 @@ router.get('/', function(req, res, next) {
 });
 
 // POST /api/users/register
-router.post('/register', async (req, res, next) => {
+router.post('/register', validateRegisterInput, async (req, res, next) => {
   // Check to make sure no one has already registered with the proposed email or
   // username.
   const user = await User.findOne({
@@ -35,6 +39,7 @@ router.post('/register', async (req, res, next) => {
     return next(err);
   }
 
+  // Otherwise create a new user
   const newUser = new User({
     username: req.body.username,
     email: req.body.email
@@ -47,7 +52,7 @@ router.post('/register', async (req, res, next) => {
       try {
         newUser.hashedPassword = hashedPassword;
         const user = await newUser.save();
-        return res.json({ user });
+        return res.json(await loginUser(user)); // <-- THIS IS THE CHANGED LINE
       }
       catch(err) {
         next(err);
@@ -56,7 +61,8 @@ router.post('/register', async (req, res, next) => {
   });
 });
 
-router.post('/login', async (req, res, next) => {
+// POST /api/users/login
+router.post('/login', validateLoginInput, async (req, res, next) => {
   passport.authenticate('local', async function(err, user) {
     if (err) return next(err);
     if (!user) {
@@ -65,7 +71,23 @@ router.post('/login', async (req, res, next) => {
       err.errors = { email: "Invalid credentials" };
       return next(err);
     }
-    return res.json({ user });
+    return res.json(await loginUser(user)); // <-- THIS IS THE CHANGED LINE
   })(req, res, next);
 });
 module.exports = router;
+
+router.get('/current', restoreUser, (req, res) => {
+  if (!isProduction) {
+    // In development, allow React server to gain access to the CSRF token
+    // whenever the current user information is first loaded into the
+    // React application
+    const csrfToken = req.csrfToken();
+    res.cookie("CSRF-TOKEN", csrfToken);
+  }
+  if (!req.user) return res.json(null);
+  res.json({
+    _id: req.user._id,
+    username: req.user.username,
+    email: req.user.email
+  });
+});
