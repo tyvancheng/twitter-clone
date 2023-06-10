@@ -18,7 +18,8 @@
     "mongoose": "^7.2.3",
     "morgan": "~1.9.1",
     "passport": "^0.6.0",
-    "passport-jwt": "^4.0.1"
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0"
   },
   "devDependencies": {
     "dotenv-cli": "^7.2.1",
