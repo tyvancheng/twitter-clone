@@ -10,10 +10,16 @@ const validateRegisterInput = require('../../validations/register');
 const validateLoginInput = require('../../validations/login');
 
 /* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.json({
-    message: "GET /api/users"
-  });
+router.get('/', async function(req, res, next) {
+  // res.json({
+  //   message: "GET /api/users"
+  // });
+  try {
+    const users = await User.find({});
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/users/register
@@ -74,7 +80,7 @@ router.post('/login', validateLoginInput, async (req, res, next) => {
     return res.json(await loginUser(user)); // <-- THIS IS THE CHANGED LINE
   })(req, res, next);
 });
-module.exports = router;
+
 
 router.get('/current', restoreUser, (req, res) => {
   if (!isProduction) {
@@ -91,3 +97,5 @@ router.get('/current', restoreUser, (req, res) => {
     email: req.user.email
   });
 });
+
+module.exports = router;
